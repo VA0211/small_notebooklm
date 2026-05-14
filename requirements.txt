@@ -1,0 +1,16 @@
+langchain
+langchain-community
+langchain-core
+langchain-google-genai
+langchain-huggingface
+langchain-openai
+langchain-qdrant
+langchain-text-splitters
+loguru
+pypdf
+qdrant-client
+ragas
+sentence-transformers
+transformers
+typer
+vllm
