@@ -35,4 +35,8 @@ def run_evaluation(test_cases: list[dict[str, str]], *,
     eval_dataset = Dataset.from_dict(data)
     
     llm = LangchainLLMWrapper(get_llm(provider=llm_provider))
+    embeddings = LangchainEmbeddingsWrapper(get_embeddings())
+    metrics = get_ragas_metrics(llm, embeddings)
+    config = RunConfig(timeout=timeout_s, max_retries=max_retries, max_workers=max_workers)
     
+    return evaluate(dataset=eval_dataset, metrics=metrics, llm=llm, embeddings=embeddings, run_config=config)
