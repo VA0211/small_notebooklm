@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, model_validator
 from qdrant_client.http import models as qmodels
 
 class MetadataFilter(BaseModel):
@@ -8,10 +8,9 @@ class MetadataFilter(BaseModel):
     section: str | None = None
     document_id: str | None = None
 
-    @model_validator(model="after")
+    @model_validator(mode="after")
     def _normalize(self) -> "MetadataFilter":
         names = [n.strip() for n in (self.filenames or []) if isinstance(n, str) and n.strip()]
-
         if not names:
             self.filenames = None
         elif len(names) == 1:
@@ -25,30 +24,23 @@ class MetadataFilter(BaseModel):
             self.section = self.section.strip() or None
         if self.document_id is not None:
             self.document_id = self.document_id.strip() or None
-        
+
         return self
 
-def coerce_filter(filters: MetadataFilter | dict[str, object] | None) -> MetadataFilter | None:
-    """Coerce a dict (or None) into a normalized `MetadataFilter`."""
-    if filters is None:
-        return None
-    if isinstance(filters, MetadataFilter):
-        return filters
+def _coerce_filter(filters):
     if isinstance(filters, dict):
-        return MetadataFilter.model_validate(filters)
-    raise TypeError(f"Unsupported filters type: {type(filters).__name__}")
+        return MetadataFilter(**filters)
+    return filters
 
 def filters_to_dict(filters):
-    f = coerce_filter(filters)
-    if f is None:
-        return None
-    return f.model_dump(exclude_none=True) or None
+    f = _coerce_filter(filters)
+    return None if f is None else f.model_dump(exclude_none=True) or None
 
 def filters_to_qdrant(filters):
     flat = filters_to_dict(filters)
     if not flat:
         return None
-    
+
     conditions = []
     for field, value in flat.items():
         if field == "filenames" and isinstance(value, list):
@@ -59,5 +51,5 @@ def filters_to_qdrant(filters):
             conditions.append(qmodels.FieldCondition(
                 key=f"metadata.{field}", match=qmodels.MatchValue(value=value)
             ))
-    return qmodels.Filter(must=conditions) if conditions else None
 
+    return qmodels.Filter(must=conditions) if conditions else None

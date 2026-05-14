@@ -1,13 +1,12 @@
+import torch
+from functools import lru_cache
+from langchain_core.messages.human import HumanMessage
 from src.config import settings
 
 def _build_hf_local():
-    import torch 
     from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
     from langchain_huggingface import ChatHuggingFace, HuggingFacePipeline
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    from langchain_openai import ChatOpenAI
-    from langchain_core.messages.human import HumanMessage
-
+    
     tokenizer = AutoTokenizer.from_pretrained(settings.hf_model)
     model = AutoModelForCausalLM.from_pretrained(settings.hf_model, dtype=torch.bfloat16)
 
@@ -18,13 +17,13 @@ def _build_hf_local():
         device=settings.hf_device,
         return_full_text=False,
     )
-
     text_gen.generation_config.max_new_tokens = settings.hf_max_new_tokens
     text_gen.generation_config.do_sample = settings.llm_temperature > 0
 
     return ChatHuggingFace(llm=HuggingFacePipeline(pipeline=text_gen))
 
 def _build_gemini():
+    from langchain_google_genai import ChatGoogleGenerativeAI
     return ChatGoogleGenerativeAI(
         model=settings.gemini_model,
         temperature=settings.llm_temperature,
@@ -32,6 +31,7 @@ def _build_gemini():
     )
 
 def _build_vllm():
+    from langchain_openai import ChatOpenAI
     return ChatOpenAI(
         model=settings.hf_model,
         openai_api_key=settings.vllm_api_key,
@@ -49,9 +49,9 @@ def get_llm(provider=None):
         return _build_gemini()
     if provider == "vllm":
         return _build_vllm()
-    
+
     raise ValueError(f"Unknown llm_provider '{provider}'")
 
 def invoke_llm(prompt, provider=None):
-    reponse = get_llm(provider=provider).invoke([HumanMessage(content=prompt)])
-    return reponse.content if isinstance(reponse.content, str) else str(reponse.content)
+    response = get_llm(provider=provider).invoke([HumanMessage(content=prompt)])
+    return response.content if isinstance(response.content, str) else str(response.content)

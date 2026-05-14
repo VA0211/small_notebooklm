@@ -1,14 +1,14 @@
 import hashlib
 import uuid
 from collections import defaultdict
-
 from pathlib import Path
+
 from langchain_community.document_loaders.pdf import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from config import settings
-from store import get_vector_store, ensure_collection
-from schemas import ChunkMetadata
+from src.config import settings
+from src.store import get_vector_store, ensure_collection
+from src.schemas import ChunkMetadata
 
 def _document_id(path):
     raw = f"{path.name}:{path.stat().st_size}"
@@ -44,41 +44,42 @@ def build_chunks(pdf_paths, chunk_size=None, chunk_overlap=None, chunker=None):
     page_docs = []
     for path in pdf_paths:
         page_docs.extend(_load_pdf(path))
-
+        
     splitter = chunker or _splitter(chunk_size, chunk_overlap)
     chunks = splitter.split_documents(page_docs)
     per_doc_counter = defaultdict(int)
-
+    
     for chunk in chunks:
         doc_id = chunk.metadata["document_id"]
         idx = per_doc_counter[doc_id]
         per_doc_counter[doc_id] += 1
-
+        
         meta = ChunkMetadata(
             document_id=doc_id,
-            file_name=chunk.metadata["filename"],
+            filename=chunk.metadata["filename"],
             source=chunk.metadata["source"],
             page=chunk.metadata["page"],
             chunk_id=_chunk_id(doc_id, chunk.metadata["page"], idx),
             section=chunk.metadata.get("section"),
         )
         chunk.metadata = meta.model_dump()
-
+        
     return chunks
 
 def index_chunks(chunks, collection_name=None):
     if not chunks:
         return 0
-    
     ids = [str(uuid.uuid5(uuid.NAMESPACE_DNS, c.metadata["chunk_id"])) for c in chunks]
     get_vector_store(collection_name=collection_name).add_documents(chunks, ids=ids)
     return len(chunks)
 
 def ingest(recreate=False, collection_name=None, chunker=None, chunk_size=None, chunk_overlap=None):
+    def discover_pdfs():
+        return list(settings.data_dir.glob("*.pdf"))
+
     pdfs = discover_pdfs()
     ensure_collection(recreate=recreate, collection_name=collection_name)
     chunks = build_chunks(pdfs, chunker=chunker, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-
     return index_chunks(chunks, collection_name=collection_name)
 
 def save_and_ingest_pdf(file_bytes, filename):
@@ -86,8 +87,7 @@ def save_and_ingest_pdf(file_bytes, filename):
     dest = settings.data_dir / safe_name
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(file_bytes)
-
+    
     ensure_collection(recreate=False)
     chunks = build_chunks([dest])
-    return {"filename": safe_name, "chunk_indexed": index_chunks(chunks)}
-
+    return {"filename": safe_name, "chunks_indexed": index_chunks(chunks)}

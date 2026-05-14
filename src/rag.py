@@ -1,8 +1,5 @@
-from __future__ import annotations
-
 from functools import lru_cache
 from pathlib import Path
-
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from src.config import settings
@@ -20,10 +17,8 @@ def retrieve(query, k=None, filters=None, collection_name=None):
         k=k or settings.top_k,
         filter=filters_to_qdrant(filters),
     )
-
     return [
-        RetrievedChunk(text=doc.page_content, score=float(score), 
-                       metadata=ChunkMetadata(**doc.metadata))
+        RetrievedChunk(text=doc.page_content, score=float(score), metadata=ChunkMetadata(**doc.metadata))
         for doc, score in hits
     ]
 
@@ -35,7 +30,6 @@ def fetch_all_chunks(filters=None, collection_name=None):
         for point in page:
             payload = point.payload or {}
             meta, text = payload.get("metadata") or {}, payload.get("page_content") or ""
-
             if meta and text:
                 results.append(RetrievedChunk(text=text, score=0.0, metadata=ChunkMetadata(**meta)))
 
@@ -62,7 +56,8 @@ def format_citations(chunks):
             source_index=i,
             source_marker=f"S{i}",
             filename=c.metadata.filename,
-            page=c.metadata.section,
+            page=c.metadata.page,
+            section=c.metadata.section,
             chunk_id=c.metadata.chunk_id,
         )
         for i, c in enumerate(chunks, start=1)
@@ -73,10 +68,10 @@ def answer(question, k=None, filters=None, collection_name=None):
 
     if not chunks:
         return RagAnswer(
-            question=question, 
-            answer="I don't have enough data in this context to answer the question."
+            question=question,
+            answer="Tôi không có đủ thông tin trong ngữ cảnh được cung cấp để trả lời."
         )
-    
+
     prompt = render_prompt(ANSWER_TEMPLATE, question=question, chunks=chunks)
     text = invoke_llm(prompt)
 
