@@ -18,22 +18,24 @@ class ChunkingStrategy:
     strategy_id: str
     chunker: object
     params: dict[str, object]
+    
 @dataclass(frozen=True)
 class RecursiveChunker:
     chunk_size: int = 500
     chunk_overlap: int = 50
     separators: list[str] | None = None
-def _splitter(self) -> RecursiveCharacterTextSplitter:
-    return RecursiveCharacterTextSplitter(
-                chunk_size=self.chunk_size,
-                chunk_overlap=self.chunk_overlap,
-                separators=self.separators or DEFAULT_SEPARATORS,
-                is_separator_regex=False,
-            )
-def split_documents(self, documents: list[Document]) -> list[Document]:
-    if not documents:
-        return []
-    return self._splitter().split_documents(documents)
+
+    def _splitter(self) -> RecursiveCharacterTextSplitter:
+        return RecursiveCharacterTextSplitter(
+                    chunk_size=self.chunk_size,
+                    chunk_overlap=self.chunk_overlap,
+                    separators=self.separators or DEFAULT_SEPARATORS,
+                    is_separator_regex=False,
+                )
+    def split_documents(self, documents: list[Document]) -> list[Document]:
+        if not documents:
+            return []
+        return self._splitter().split_documents(documents)
 
 
 _SEMANTIC_CONFIGS = [("semantic_percentile", "percentile"),
@@ -47,16 +49,16 @@ class SemanticChunkerWrapper:
     embeddings: Embeddings
     breakpoint_type: str = "percentile"
 
-def _splitter(self) -> SemanticChunker:
-    return SemanticChunker(
-            embeddings=self.embeddings,
-            breakpoint_threshold_type=self.breakpoint_type,
-            )
+    def _splitter(self) -> SemanticChunker:
+        return SemanticChunker(
+                embeddings=self.embeddings,
+                breakpoint_threshold_type=self.breakpoint_type,
+                )
 
-def split_documents(self, documents: list[Document]) -> list[Document]:
-    if not documents:
-        return []
-    return self._splitter().split_documents(documents)
+    def split_documents(self, documents: list[Document]) -> list[Document]:
+        if not documents:
+            return []
+        return self._splitter().split_documents(documents)
 
-def split_text(self, text: str) -> list[str]:
-    return self._splitter().split_text(text)
+    def split_text(self, text: str) -> list[str]:
+        return self._splitter().split_text(text)

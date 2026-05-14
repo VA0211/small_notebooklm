@@ -1,3 +1,21 @@
+import json
+from pathlib import Path
+
+from src.config import settings
+from src.indexing import ingest
+from src.rag import answer
+from src.schemas import RagAnswer
+from src.evaluation.chunking_strategies import ChunkingStrategy
+from src.evaluation.ragas_evaluator import run_evaluation
+
+def write_json(path: Path, data: dict):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def summary_metrics(df) -> dict:
+    numeric_cols = df.select_dtypes(include='number').columns
+    return df[numeric_cols].mean().to_dict()
+
 def _evaluate_strategy(
         strategy: ChunkingStrategy, output_dir: Path, test_cases: list[dict]
         ) -> dict[str, object]:
